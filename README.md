@@ -15,7 +15,7 @@ Defina as variáveis de ambiente em `.env`:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_ADMIN_PASSWORD`
+- `VITE_ADMIN_PASSWORD=Forbiden_2xA@1`
 
 ### Tabela necessária
 
