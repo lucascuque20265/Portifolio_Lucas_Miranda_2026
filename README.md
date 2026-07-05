@@ -39,10 +39,12 @@ Crie uma tabela chamada `projects` no Supabase com pelo menos estas colunas:
 ## Deploy na Vercel
 
 1. Crie um projeto na Vercel conectado ao repositório.
-2. Em `Settings > Environment Variables`, adicione:
+2. Em `Settings > Environment Variables`, adicione exatamente:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
    - `VITE_ADMIN_PASSWORD`
+
+> Atenção: se algum desses campos estiver vazio na Vercel, o app não conseguirá conectar ao Supabase.
 3. Faça deploy.
 4. Em `Domains`, adicione `www.animaestudio.site`.
 5. No HostGator, aponte o `www` para a Vercel conforme as instruções da Vercel (CNAME para `cname.vercel-dns.com` ou registros indicados no painel).
