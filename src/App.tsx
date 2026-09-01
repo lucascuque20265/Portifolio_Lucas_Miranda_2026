@@ -1,15 +1,5 @@
-import { useEffect, useState } from "react";
-import { supabase } from "./lib/supabase";
-
-type Project = {
-  id: number;
-  title: string;
-  description: string | null;
-  link: string | null;
-  image_url: string | null;
-  category: string | null;
-  published: boolean | null;
-};
+import { useState } from "react";
+import { useProjects, useUpdateProject, Project } from "./hooks/useProjectsCache";
 
 type NewProject = {
   title: string;
@@ -23,15 +13,19 @@ type NewProject = {
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? "";
 
 export function App() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Carrega projetos públicos com cache
+  const { projects, loading, error } = useProjects(true);
+  
+  // Carrega todos os projetos para admin com cache
+  const { projects: adminProjects, loading: adminLoading, refetch: refetchAdmin } = useProjects(false);
+  
+  // Hooks para atualizar projetos (invalida cache automaticamente)
+  const { updatePublished, createProject } = useUpdateProject();
+
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [adminError, setAdminError] = useState<string | null>(null);
   const [adminMessage, setAdminMessage] = useState<string | null>(null);
-  const [adminProjects, setAdminProjects] = useState<Project[]>([]);
-  const [adminLoading, setAdminLoading] = useState(false);
   const [newProject, setNewProject] = useState<NewProject>({
     title: "",
     description: "",
@@ -40,39 +34,6 @@ export function App() {
     category: "",
     published: true,
   });
-
-  useEffect(() => {
-    void loadProjects();
-  }, []);
-
-  useEffect(() => {
-    if (isAdmin) {
-      void loadProjects(true);
-    }
-  }, [isAdmin]);
-
-  async function loadProjects(adminMode = false) {
-    setLoading(!adminMode);
-    setAdminLoading(adminMode);
-    const query = supabase.from<Project>("projects").select(
-      "id,title,description,link,image_url,category,published,created_at",
-    );
-
-    const { data, error } = await query.order("created_at", { ascending: false });
-
-    if (error) {
-      setError(error.message);
-      setProjects([]);
-      setAdminProjects([]);
-    } else if (data) {
-      setProjects(data.filter((project) => project.published));
-      setAdminProjects(data);
-      setError(null);
-    }
-
-    setLoading(false);
-    setAdminLoading(false);
-  }
 
   function handleLogin() {
     if (!ADMIN_PASSWORD) {
@@ -92,47 +53,47 @@ export function App() {
 
   async function handleCreateProject() {
     setAdminMessage(null);
-    const { error } = await supabase.from("projects").insert({
-      title: newProject.title,
-      description: newProject.description,
-      link: newProject.link,
-      image_url: newProject.image_url,
-      category: newProject.category,
-      published: newProject.published,
-    });
+    try {
+      await createProject({
+        title: newProject.title,
+        description: newProject.description,
+        link: newProject.link,
+        image_url: newProject.image_url,
+        category: newProject.category,
+        published: newProject.published,
+      });
 
-    if (error) {
-      setAdminError(error.message);
-      return;
+      setAdminError(null);
+      setAdminMessage("Projeto criado com sucesso.");
+      setNewProject({
+        title: "",
+        description: "",
+        link: "",
+        image_url: "",
+        category: "",
+        published: true,
+      });
+      
+      // Recarrega lista de admin
+      void refetchAdmin();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao criar projeto";
+      setAdminError(errorMessage);
     }
-
-    setAdminError(null);
-    setAdminMessage("Projeto criado com sucesso.");
-    setNewProject({
-      title: "",
-      description: "",
-      link: "",
-      image_url: "",
-      category: "",
-      published: true,
-    });
-    void loadProjects(true);
   }
 
   async function togglePublish(project: Project) {
-    const { error } = await supabase
-      .from("projects")
-      .update({ published: !project.published })
-      .eq("id", project.id);
-
-    if (error) {
-      setAdminError(error.message);
-      return;
+    try {
+      await updatePublished(project.id, !project.published);
+      setAdminError(null);
+      setAdminMessage(`Projeto ${project.title} atualizado.`);
+      
+      // Recarrega lista de admin
+      void refetchAdmin();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao atualizar projeto";
+      setAdminError(errorMessage);
     }
-
-    setAdminError(null);
-    setAdminMessage(`Projeto ${project.title} atualizado.`);
-    void loadProjects(true);
   }
 
   return (
